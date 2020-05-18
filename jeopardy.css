@@ -22,22 +22,16 @@ body {
   padding: 1em;
 }
 
-th {
-  /* font-family: Helvetica, sans-serif;
-  font-weight: bold; */
-  height: 4em;
-  text-shadow: darkgoldenrod 1px 1px;
-}
-
 td {
   height: 9em;
-  font-family: "Copse";
+  font-family: "Roboto";
 }
 
 td:hover {
   cursor: pointer;
 }
 
-.category {
+.category > td {
   text-transform: uppercase;
+  text-shadow: darkgoldenrod 2px 2px;
 }
