@@ -6,6 +6,14 @@ const NUM_CATEGORIES = 6;
 const NUM_QUESTIONS_PER_CAT = 5;
 
 let categories = [];
+let gameData = [];
+
+// let randNum = Math.floor(Math.random() * 5);
+// let randomOffset = Math.floor(Math.random() * 100);
+
+function randNum(num) {
+  return Math.floor(Math.random() * num);
+}
 
 /** Get NUM_CATEGORIES random category from API.
  *
@@ -14,22 +22,36 @@ let categories = [];
 
 async function getCategoryIds() {
   const response = await axios.get(
-    `${BASE_URL}/categories?count=${NUM_CATEGORIES}&offset=15`
+    `${BASE_URL}/categories?count=18&offset=${randNum(50)}`
   );
   const categoryIds = [];
   for (let category of response.data) {
     categoryIds.push(category.id);
   }
-  return categoryIds;
+  const categories = _.slice(categoryIds, 5, 11);
+  return categories;
 }
 
 /** Return object with data about a category */
 
 async function getCategory(catId) {
-  const response = await axios.get(`${BASE_URL}/category?id=${catId}`);
+  const response = await axios.get(`${BASE_URL}category?id=${catId}`);
   const title = response.data.title;
   const clues = response.data.clues;
-  return { title, clues };
+  return { catId, title, clues };
+}
+
+async function getClue(catId) {
+  const response = await axios.get(`${BASE_URL}clues?category=${catId}}`);
+  console.log(response.data);
+}
+
+async function getGameData() {
+  const categoryIds = await getCategoryIds();
+  for (let catId of categoryIds) {
+    const response = await getCategory(catId);
+    gameData.push(response);
+  }
 }
 
 /** Fill the HTML table#jeopardy with the categories & cells for questions.
@@ -41,30 +63,19 @@ async function getCategory(catId) {
  */
 
 async function fillTable() {
-  const getIds = await getCategoryIds();
-  const columnData = [];
-  for (let id of getIds) {
-    const response = await getCategory(id);
-    columnData.push(response);
-  }
-
-  // Create the top table row, set its ID and add an event listener
   const $topTr = $(`<tr class="category"></tr>`);
   for (let x = 0; x < NUM_CATEGORIES; x++) {
-    const $td = $(`<td>${columnData[x].title}</td>`);
+    const $td = $(`<td id="${gameData[x].catId}">${gameData[x].title}</td>`);
     $topTr.append($td);
   }
 
   $tableHead.append($topTr);
 
   // Create grid of cells
-  for (let y = 0; y < NUM_QUESTIONS_PER_CAT; y++) {
+  for (let x = 0; x < NUM_QUESTIONS_PER_CAT; x++) {
     const $tr = $(`<tr></tr>`);
-    const clues = columnData[y].clues;
-    console.log(clues);
-    for (let x = 0; x < NUM_CATEGORIES; x++) {
-      const $td = $(`<td data-showing="">${clues[x]}</td>`);
-      // console.log(clues[x]);
+    for (let y = 0; y < NUM_CATEGORIES; y++) {
+      const $td = $(`<td id="${y}-${x}" data-showing="">?</td>`);
       $tr.append($td);
     }
     $tableBody.append($tr);
@@ -79,14 +90,20 @@ async function fillTable() {
  * - if currently "answer", ignore click
  * */
 
-function handleClick(event) {
+async function handleClick(event) {
   const $target = $(event.target);
-  const showing = event.target.dataset.showing;
+  const $showing = $target[0].dataset.showing;
+  const x = Number($target.attr("id").split("-", 1));
+  const y = Number($target.attr("id").split("-")[1]);
+  const clue = gameData[x].clues[y];
 
-  if (showing === "") {
+  if ($showing === "") {
+    $target.addClass("clicked");
+    $target.text(clue.question);
     $target.attr("data-showing", "question");
-  } else if (showing === "question") {
-    // display the answer in the td
+  } else if ($showing === "question") {
+    $target.removeClass("clicked");
+    $target.text(clue.answer);
     $target.attr("data-showing", "answer");
   }
 }
@@ -101,12 +118,15 @@ function handleClick(event) {
 async function setupAndStart() {
   $("thead").empty();
   $("tbody").empty();
+  await getGameData();
   fillTable();
 }
 
 /** On click of restart button, restart game. */
 
-$("#restart").on("click", setupAndStart);
+$("#restart").on("click", function () {
+  location.reload();
+});
 
 /** On page load, setup and start & add event handler for clicking clues */
 
